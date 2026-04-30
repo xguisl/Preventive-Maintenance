@@ -764,19 +764,20 @@ Html::header(
                 // Evento do botão Próximo
                 // Next button event
                 $('#nextButton').click(function() {
-                    if (!$('#entities_id_select').val()) {
+                    const selectedValue = $('#entities_id_select').val();
+                    if (selectedValue === '' || selectedValue === null || selectedValue === undefined) {
                         alert('<?php echo __("Selecione uma entidade"); ?>');
                         return;
                     }
-                    
-                    const entityId = $('#entities_id_select').val();
+
+                    const entityId = parseInt(selectedValue);
                     const entityName = $('#entities_id_select option:selected').text();
-                    
+
                     $('#entities_id').val(entityId);
                     $('#selected-entity-name').text('Entidade: ' + entityName);
                     $('#selected-entity-id').text(entityId);
                     loadComputers(entityId);
-                    
+
                     $('#step1').hide();
                     $('#step2').show();
                 });

@@ -888,8 +888,8 @@ Html::header(
                 </a>
             </div>
 
-            <button id="toggleNotifications" class="btn btn-outline-secondary" style="margin-left: 10px;">
-                <i class="fas fa-bell"></i> <?= "&nbsp", __('Notificações') ?>
+            <button id="toggleNotifications" class="btn btn-outline-secondary" style="margin-left: 10px;" type="button">
+                <i class="fas fa-bell"></i> <?= __('Notificações') ?>
             </button>
         </div>
     </div>
@@ -902,6 +902,8 @@ Html::header(
                 <span class="notification-modal-close">&times;</span>
             </div>
             <form method="post" id="notificationConfigForm">
+                <?php echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]); ?>
+                <input type="hidden" name="save_notification_config" value="1">
                 <div class="notification-form-group">
                     <label><?= __('Habilitar Notificações') ?></label>
                     <div class="toggle-container">
