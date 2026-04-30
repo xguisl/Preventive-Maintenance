@@ -249,20 +249,25 @@ function plugin_init_preventivemaintenance() {
     $PLUGIN_HOOKS["menu_toadd"]['preventivemaintenance'] = array('plugins'  => 'PluginPreventivemaintenanceMenu');
     $PLUGIN_HOOKS['rights']['preventivemaintenance'] = 'plugin_preventivemaintenance_getRights';
     $PLUGIN_HOOKS['menu_entry_icon']['preventivemaintenance'] = Plugin::getWebDir('preventivemaintenance', false) . '/pics/logopm.png';
-    
+
     $PLUGIN_HOOKS['use_massive_action']['preventivemaintenance'] = true;
     $PLUGIN_HOOKS['search_options']['preventivemaintenance'] = true;
 
     $PLUGIN_HOOKS['item_update']['preventivemaintenance'] = [
         'Ticket' => ['PluginPreventivemaintenancePreventivemaintenance', 'updateMaintenanceAfterTicket']];
-        
-        
+
+
     $PLUGIN_HOOKS['post_init']['preventivemaintenance'] = 'plugin_preventivemaintenance_postinit';
     $PLUGIN_HOOKS['user_login']['preventivemaintenance'] = ['PluginPreventivemaintenanceProfile', 'userLoginHook'];
 
     Plugin::registerClass('PluginPreventivemaintenanceProfile', ['addtabon' => ['Profile']]);
     Plugin::registerClass('PluginPreventivemaintenanceMenu');
     Plugin::registerClass('PluginPreventivemaintenancePreventivemaintenance');
+    Plugin::registerClass('PluginPreventivemaintenanceCron', ['classname' => 'PluginPreventivemaintenanceCron']);
+    Plugin::registerClass('PluginPreventivemaintenanceCrontask', ['classname' => 'PluginPreventivemaintenanceCrontask']);
+    
+    // Registra as tarefas cron
+    PluginPreventivemaintenanceCrontask::registerCronTasks();
 }
 
 //Define os direitos/permissões disponíveis para o plugin

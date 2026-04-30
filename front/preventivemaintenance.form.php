@@ -202,59 +202,22 @@ if (isset($_POST['add'])) {
 
         error_log("[DADOS] Input preparado: " . print_r($input, true));
 
-        // GRAVAÇÃO MANUAL NO BANCO DE DADOS
-        // MANUAL DATABASE SAVE
+        // GRAVAÇÃO USANDO MÉTODOS DO GLPI
+        // DATABASE SAVE USING GLPI METHODS
         if ($is_edit) {
             $input['id'] = $id;
             
-            // Atualização manual
-            // Manual update
-            $query = "UPDATE glpi_plugin_preventivemaintenance_preventivemaintenances SET
-                      name = '".$DB->escape($input['name'])."',
-                      comment = ".(!empty($input['comment']) ? "'".$DB->escape($input['comment'])."'" : "NULL").",
-                      entities_id = ".(int)$input['entities_id'].",
-                      is_recursive = 0,
-                      technician_id = ".(int)$input['technician_id'].",
-                      items_id = ".(int)$input['items_id'].",
-                      itemtype = 'Computer',
-                      last_maintenance_date = ".(!empty($input['last_maintenance_date']) ? "'".$DB->escape($input['last_maintenance_date'])."'" : "NULL").",
-                      next_maintenance_date = '".$DB->escape($input['next_maintenance_date'])."',
-                      maintenance_interval = ".(int)$input['maintenance_interval']."
-                      WHERE id = ".(int)$input['id'];
-            
-            error_log("[QUERY] Update: " . $query);
-            $result = $DB->query($query);
-            
-            if (!$result) {
-                error_log("[ERRO] Query falhou: " . $DB->error());
+            // Atualização usando método do GLPI
+            // Update using GLPI method
+            if (!$pm->update($input)) {
                 throw new Exception(__('Erro ao atualizar no banco de dados.'));
             }
             
             Session::addMessageAfterRedirect(__('Manutenção atualizada com sucesso!'), true, INFO);
         } else {
-            // Inserção manual
-            // Manual insert
-            $query = "INSERT INTO glpi_plugin_preventivemaintenance_preventivemaintenances
-                     (name, comment, entities_id, is_recursive, technician_id, items_id, itemtype,
-                      last_maintenance_date, next_maintenance_date, maintenance_interval)
-                      VALUES (
-                      '".$DB->escape($input['name'])."',
-                      ".(!empty($input['comment']) ? "'".$DB->escape($input['comment'])."'" : "NULL").",
-                      ".(int)$input['entities_id'].",
-                      0,
-                      ".(int)$input['technician_id'].",
-                      ".(int)$input['items_id'].",
-                      'Computer',
-                      ".(!empty($input['last_maintenance_date']) ? "'".$DB->escape($input['last_maintenance_date'])."'" : "NULL").",
-                      '".$DB->escape($input['next_maintenance_date'])."',
-                      ".(int)$input['maintenance_interval']."
-                      )";
-            
-            error_log("[QUERY] Insert: " . $query);
-            $result = $DB->query($query);
-            
-            if (!$result) {
-                error_log("[ERRO] Query falhou: " . $DB->error());
+            // Inserção usando método do GLPI
+            // Insert using GLPI method
+            if (!$pm->add($input)) {
                 throw new Exception(__('Erro ao gravar no banco de dados.'));
             }
             
@@ -653,14 +616,9 @@ Html::header(
                     </form>
                 </div>
             </div>
-            
-            <!-- Inclusão de bibliotecas JavaScript -->
-            <!-- JavaScript libraries inclusion -->
-            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-            <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-i18n/1.12.1/jquery-ui-i18n.min.js"></script>
-            
+
             <!-- Script JavaScript para funcionalidades do formulário -->
+            <!-- GLPI já inclui jQuery e jQuery UI automaticamente -->
             <!-- JavaScript script for form functionalities -->
             <script>
             const computersData = <?php echo json_encode(array_values($all_computers)); ?>;
