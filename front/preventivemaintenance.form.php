@@ -135,7 +135,9 @@ if (isset($_POST['add'])) {
         }
 
         $entity = new Entity();
-        if (!$entity->getFromDB($selected_entity_id)) {
+        // Entidade raiz (ID 0) é válida no GLPI
+        // Root entity (ID 0) is valid in GLPI
+        if ($selected_entity_id > 0 && !$entity->getFromDB($selected_entity_id)) {
             throw new Exception(__('A entidade selecionada não existe no sistema.'));
         }
 
@@ -243,9 +245,40 @@ if (isset($_POST['save_selected_profiles'])) {
 // Configuração do formulário
 // Form configuration
 $entity = new Entity();
-// Busca apenas as entidades ativas da sessão do usuário
-// Finds only active entities from user session
-$entities = $entity->find(['id' => $_SESSION['glpiactiveentities']], 'completename ASC');
+// Busca as entidades que o usuário tem acesso
+// Finds entities the user has access to
+$active_entities = $_SESSION['glpiactiveentities'] ?? [];
+$entities = $entity->find(['id' => $active_entities], 'completename ASC');
+
+// Adiciona a entidade raiz se o usuário tiver acesso e ela não estiver na lista
+// Adds root entity if user has access and it's not in the list
+if (Session::haveAccessToEntity(0) || in_array(0, $active_entities)) {
+    $root_found = false;
+    foreach ($entities as $ent) {
+        if ($ent['id'] == 0) {
+            $root_found = true;
+            break;
+        }
+    }
+    if (!$root_found) {
+        $root_entity = new Entity();
+        if ($root_entity->getFromDB(0)) {
+            $entities = [0 => $root_entity->fields] + $entities;
+        } else {
+            // Entidade raiz pode não estar na tabela, cria entrada virtual
+            $entities = [0 => ['id' => 0, 'completename' => __('Entidade Raiz')]] + $entities;
+        }
+    }
+}
+
+// Garante que a entidade raiz tenha um nome visível
+// Ensures root entity has a visible name
+foreach ($entities as &$ent) {
+    if ($ent['id'] == 0 && (empty($ent['completename']) || $ent['completename'] === '0')) {
+        $ent['completename'] = __('Entidade Raiz');
+    }
+}
+unset($ent);
 
 $computer = new Computer();
 $all_computers = $computer->find(['is_deleted' => 0], "name ASC");
@@ -618,13 +651,42 @@ Html::header(
             </div>
 
             <!-- Script JavaScript para funcionalidades do formulário -->
-            <!-- GLPI já inclui jQuery e jQuery UI automaticamente -->
-            <!-- JavaScript script for form functionalities -->
+            <!-- GLPI já inclui jQuery automaticamente. jQuery UI pode precisar ser carregado. -->
+            <?php
+            // Carrega jQuery UI se disponível no GLPI
+            $jquery_ui_path = GLPI_ROOT . '/public/lib/jquery-ui.min.js';
+            if (file_exists($jquery_ui_path)) {
+                echo Html::script('public/lib/jquery-ui.min.js');
+            }
+            ?>
             <script>
             const computersData = <?php echo json_encode(array_values($all_computers)); ?>;
             const blockedComputers = <?php echo json_encode($blocked_computers); ?>;
             
-            $(document).ready(function() {
+            jQuery(document).ready(function($) {
+                // Verifica se datepicker está disponível
+                // Checks if datepicker is available
+                if (!$.datepicker) {
+                    console.warn('jQuery UI Datepicker não está disponível');
+                    // Ativa o botão Próximo mesmo sem datepicker
+                    $('#nextButton').off('click').on('click', function() {
+                        const selectedValue = $('#entities_id_select').val();
+                        if (selectedValue === '' || selectedValue === null || selectedValue === undefined) {
+                            alert('<?php echo __("Selecione uma entidade"); ?>');
+                            return;
+                        }
+                        const entityId = parseInt(selectedValue);
+                        const entityName = $('#entities_id_select option:selected').text();
+                        $('#entities_id').val(entityId);
+                        $('#selected-entity-name').text('Entidade: ' + entityName);
+                        $('#selected-entity-id').text(entityId);
+                        loadComputers(entityId);
+                        $('#step1').hide();
+                        $('#step2').show();
+                    });
+                    return;
+                }
+
                 // Configuração de localização para português
                 // Portuguese localization setup
                 $.datepicker.regional['pt-BR'] = {

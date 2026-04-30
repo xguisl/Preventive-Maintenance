@@ -216,9 +216,35 @@ if (isset($_GET['toggle_auto_ticket'])) {
     Html::redirect('preventivemaintenance.php');
 }
 
+// Processa toggle das Notificações
+if (isset($_GET['toggle_notifications'])) {
+    $new_value = $notification_enabled ? '0' : '1';
+    if (updatePluginConfig('notification_enabled', $new_value)) {
+        $notification_enabled = !$notification_enabled;
+        Session::addMessageAfterRedirect(
+            $notification_enabled ? __('Notificações ativadas com sucesso!') : __('Notificações desativadas com sucesso!'),
+            true,
+            INFO
+        );
+    } else {
+        Session::addMessageAfterRedirect(
+            __('Falha ao atualizar a configuração de notificações!'),
+            false,
+            ERROR
+        );
+    }
+    Html::redirect('preventivemaintenance.php');
+}
+
 // Processa configuração de notificações
 if (isset($_POST['save_notification_config'])) {
-    $notification_enabled = isset($_POST['notification_enabled']) ? '1' : '0';
+    // Verificação CSRF
+    if (!isset($_POST['_glpi_csrf_token'])) {
+        Session::addMessageAfterRedirect(__('Token de segurança ausente.'), false, ERROR);
+        Html::redirect('preventivemaintenance.php');
+    }
+    
+    $notification_enabled = (isset($_POST['notification_enabled']) && $_POST['notification_enabled'] === '1') ? '1' : '0';
     $notification_days_before = (int)$_POST['notification_days_before'];
     $notification_email = $_POST['notification_email'] ?? '';
     $notification_teams_webhook = $_POST['notification_teams_webhook'] ?? '';
@@ -888,13 +914,22 @@ Html::header(
                 </a>
             </div>
 
+            <div class="toggle-container" style="margin-left: 15px;">
+                <span class="toggle-label"><?= __('Notificações') ?></span>
+                <a href="preventivemaintenance.php?toggle_notifications=1"
+                   class="toggle-btn <?= $notification_enabled ? 'on' : 'off' ?>"
+                   title="<?= $notification_enabled ? __('Desativar Notificações') : __('Ativar Notificações') ?>">
+                    <span class="toggle-knob"></span>
+                </a>
+            </div>
+
             <button id="toggleNotifications" class="btn btn-outline-secondary" style="margin-left: 10px;" type="button">
-                <i class="fas fa-bell"></i> <?= __('Notificações') ?>
+                <i class="fas fa-cog"></i> <?= __('Config. Notificações') ?>
             </button>
         </div>
     </div>
 
-    <!-- Modal de configuração de notificações -->
+    <!-- Modal de configuração de notificações (fora do container principal) -->
     <div id="notificationModal" class="notification-modal" style="display: none;">
         <div class="notification-modal-content">
             <div class="notification-modal-header">
@@ -908,7 +943,8 @@ Html::header(
                     <label><?= __('Habilitar Notificações') ?></label>
                     <div class="toggle-container">
                         <span class="toggle-label"><?= __('Desativado') ?></span>
-                        <input type="checkbox" name="notification_enabled" id="notification_enabled" <?= $notification_enabled ? 'checked' : '' ?>>
+                        <input type="hidden" name="notification_enabled" value="0">
+                        <input type="checkbox" name="notification_enabled" id="notification_enabled" value="1" <?= $notification_enabled ? 'checked' : '' ?>>
                         <span class="toggle-label"><?= __('Ativado') ?></span>
                     </div>
                 </div>
@@ -1265,20 +1301,21 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
 
             const formData = new FormData(notificationConfigForm);
-            const data = {
-                save_notification_config: 1,
-                notification_enabled: formData.get('notification_enabled') ? '1' : '0',
-                notification_days_before: formData.get('notification_days_before'),
-                notification_email: formData.get('notification_email'),
-                notification_teams_webhook: formData.get('notification_teams_webhook')
-            };
+            const params = new URLSearchParams();
+
+            // Inclui todos os campos do formulário incluindo o CSRF token
+            for (const [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
+            // Garante que o save_notification_config e CSRF estão incluídos
+            params.set('save_notification_config', '1');
 
             fetch('preventivemaintenance.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: new URLSearchParams(data)
+                body: params
             })
             .then(response => response.text())
             .then(data => {
